@@ -278,18 +278,7 @@ export function PlanViewer({
                 <Card className="shadow-sm">
                   <CardContent className="pt-6">
                     {sectionContent ? (
-                      <div className="prose prose-lg prose-gray max-w-none
-                        prose-headings:font-semibold
-                        prose-h2:text-2xl prose-h2:mt-8 prose-h2:mb-4
-                        prose-h3:text-xl prose-h3:mt-6 prose-h3:mb-3
-                        prose-p:text-gray-700 prose-p:leading-relaxed
-                        prose-li:text-gray-700
-                        prose-strong:text-gray-900
-                        prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:bg-primary/5 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:not-italic
-                        prose-table:border prose-table:border-gray-200
-                        prose-th:bg-gray-50 prose-th:p-3 prose-th:text-left prose-th:font-semibold
-                        prose-td:p-3 prose-td:border-t
-                      ">
+                      <div className="plan-content">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                           {sectionContent}
                         </ReactMarkdown>

@@ -123,3 +123,102 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Prose styling for markdown content */
+.plan-content {
+  line-height: 1.75;
+  color: #374151;
+}
+
+.plan-content h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  color: #111827;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.5rem;
+}
+
+.plan-content h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: #1f2937;
+}
+
+.plan-content p {
+  margin-bottom: 1rem;
+}
+
+.plan-content ul, .plan-content ol {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.plan-content li {
+  margin-bottom: 0.5rem;
+}
+
+.plan-content ul li {
+  list-style-type: disc;
+}
+
+.plan-content ol li {
+  list-style-type: decimal;
+}
+
+.plan-content strong {
+  font-weight: 600;
+  color: #111827;
+}
+
+.plan-content blockquote {
+  border-left: 4px solid #3b82f6;
+  background-color: #eff6ff;
+  padding: 1rem;
+  margin: 1.5rem 0;
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.plan-content blockquote p {
+  margin: 0;
+}
+
+.plan-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.875rem;
+}
+
+.plan-content th {
+  background-color: #f3f4f6;
+  padding: 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  border: 1px solid #e5e7eb;
+}
+
+.plan-content td {
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+}
+
+.plan-content tr:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+.plan-content code {
+  background-color: #f3f4f6;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.plan-content hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 2rem 0;
+}
