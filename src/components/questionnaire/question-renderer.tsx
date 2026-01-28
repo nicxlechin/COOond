@@ -93,7 +93,7 @@ export function QuestionRenderer({
         </Select>
       )}
 
-      {question.type === 'multi-select' && (
+      {question.type === 'multiselect' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {question.options?.map((option) => {
             const selectedValues = (value as string[]) || [];

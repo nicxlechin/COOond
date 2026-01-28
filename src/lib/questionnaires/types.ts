@@ -2,7 +2,7 @@ export type QuestionType =
   | 'text'
   | 'textarea'
   | 'select'
-  | 'multi-select'
+  | 'multiselect'
   | 'date'
   | 'currency'
   | 'scale'
@@ -51,8 +51,9 @@ export interface QuestionnaireStep {
 }
 
 export interface Questionnaire {
-  planType: 'business_plan' | 'gtm_plan';
-  totalEstimatedMinutes: number;
+  id: string;
+  title: string;
+  description: string;
   steps: QuestionnaireStep[];
 }
 

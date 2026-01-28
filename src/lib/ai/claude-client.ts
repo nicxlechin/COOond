@@ -16,8 +16,9 @@ export async function generateWithClaude(
     model: 'llama-3.3-70b-versatile',
     max_tokens: options?.maxTokens ?? 8000,
     temperature: options?.temperature ?? 0.7,
+    response_format: { type: 'json_object' },
     messages: [
-      { role: 'system', content: systemPrompt },
+      { role: 'system', content: systemPrompt + '\n\nYou MUST respond with valid JSON only. No markdown, no code blocks, just pure JSON.' },
       { role: 'user', content: userPrompt },
     ],
   });
@@ -30,61 +31,25 @@ export async function generateWithClaude(
   return content;
 }
 
-function sanitizeJSON(str: string): string {
-  // Remove control characters that break JSON parsing
-  return str
-    .replace(/[\x00-\x1F\x7F]/g, (char) => {
-      // Keep newlines and tabs as escaped versions
-      if (char === '\n') return '\\n';
-      if (char === '\r') return '\\r';
-      if (char === '\t') return '\\t';
-      return '';
-    })
-    .replace(/\n/g, '\\n')
-    .replace(/\r/g, '\\r')
-    .replace(/\t/g, '\\t');
-}
-
 export function parseJSONResponse<T>(response: string): T {
-  // Try to extract JSON from markdown code blocks
-  const jsonMatch = response.match(/```(?:json)?\n?([\s\S]*?)\n?```/);
-  let jsonStr = jsonMatch ? jsonMatch[1] : response;
-
-  // Try to find JSON object in the response
-  const objectMatch = jsonStr.match(/\{[\s\S]*\}/);
-  if (objectMatch) {
-    jsonStr = objectMatch[0];
-  }
-
-  // Clean up the JSON string
+  // With JSON mode, the response should be clean JSON
   try {
-    return JSON.parse(jsonStr) as T;
-  } catch {
-    // Try sanitizing and parsing again
-    try {
-      // Replace actual newlines inside strings with escaped versions
-      const sanitized = jsonStr
-        .replace(/:\s*"([^"]*)"/g, (match, content) => {
-          const escaped = content
-            .replace(/\n/g, '\\n')
-            .replace(/\r/g, '\\r')
-            .replace(/\t/g, '\\t');
-          return `: "${escaped}"`;
-        });
-      return JSON.parse(sanitized) as T;
-    } catch {
-      // Last resort: try to build a valid JSON from key-value pairs
+    return JSON.parse(response) as T;
+  } catch (e) {
+    // Fallback: try to extract JSON
+    const objectMatch = response.match(/\{[\s\S]*\}/);
+    if (objectMatch) {
       try {
-        const fixedJson = jsonStr
-          .replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3')
-          .replace(/:\s*'([^']*)'/g, ': "$1"')
-          .replace(/,\s*}/g, '}')
-          .replace(/,\s*]/g, ']');
-        return JSON.parse(fixedJson) as T;
-      } catch (finalError) {
-        console.error('Failed to parse JSON:', jsonStr.substring(0, 500));
-        throw new Error('Could not parse JSON from response');
+        return JSON.parse(objectMatch[0]) as T;
+      } catch {
+        // Try cleaning control characters
+        const cleaned = objectMatch[0]
+          .replace(/[\x00-\x1F\x7F]/g, ' ')
+          .replace(/\s+/g, ' ');
+        return JSON.parse(cleaned) as T;
       }
     }
+    console.error('Failed to parse JSON:', response.substring(0, 500));
+    throw new Error('Could not parse JSON from response');
   }
 }
