@@ -30,22 +30,61 @@ export async function generateWithClaude(
   return content;
 }
 
+function sanitizeJSON(str: string): string {
+  // Remove control characters that break JSON parsing
+  return str
+    .replace(/[\x00-\x1F\x7F]/g, (char) => {
+      // Keep newlines and tabs as escaped versions
+      if (char === '\n') return '\\n';
+      if (char === '\r') return '\\r';
+      if (char === '\t') return '\\t';
+      return '';
+    })
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t');
+}
+
 export function parseJSONResponse<T>(response: string): T {
-  // Try to extract JSON from the response
-  const jsonMatch = response.match(/```json\n?([\s\S]*?)\n?```/);
-  if (jsonMatch) {
-    return JSON.parse(jsonMatch[1]) as T;
+  // Try to extract JSON from markdown code blocks
+  const jsonMatch = response.match(/```(?:json)?\n?([\s\S]*?)\n?```/);
+  let jsonStr = jsonMatch ? jsonMatch[1] : response;
+
+  // Try to find JSON object in the response
+  const objectMatch = jsonStr.match(/\{[\s\S]*\}/);
+  if (objectMatch) {
+    jsonStr = objectMatch[0];
   }
 
-  // Try to parse the whole response as JSON
+  // Clean up the JSON string
   try {
-    return JSON.parse(response) as T;
+    return JSON.parse(jsonStr) as T;
   } catch {
-    // Try to find JSON object in the response
-    const objectMatch = response.match(/\{[\s\S]*\}/);
-    if (objectMatch) {
-      return JSON.parse(objectMatch[0]) as T;
+    // Try sanitizing and parsing again
+    try {
+      // Replace actual newlines inside strings with escaped versions
+      const sanitized = jsonStr
+        .replace(/:\s*"([^"]*)"/g, (match, content) => {
+          const escaped = content
+            .replace(/\n/g, '\\n')
+            .replace(/\r/g, '\\r')
+            .replace(/\t/g, '\\t');
+          return `: "${escaped}"`;
+        });
+      return JSON.parse(sanitized) as T;
+    } catch {
+      // Last resort: try to build a valid JSON from key-value pairs
+      try {
+        const fixedJson = jsonStr
+          .replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3')
+          .replace(/:\s*'([^']*)'/g, ': "$1"')
+          .replace(/,\s*}/g, '}')
+          .replace(/,\s*]/g, ']');
+        return JSON.parse(fixedJson) as T;
+      } catch (finalError) {
+        console.error('Failed to parse JSON:', jsonStr.substring(0, 500));
+        throw new Error('Could not parse JSON from response');
+      }
     }
-    throw new Error('Could not parse JSON from response');
   }
 }

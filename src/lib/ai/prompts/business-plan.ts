@@ -19,7 +19,15 @@ Your task is to generate a comprehensive, actionable business plan based on the 
 - Format with clear headers, bullet points, and numbered lists for easy scanning
 
 ## Output Format:
-You must return a valid JSON object with the structure specified in the user prompt. Each section should be a string containing well-formatted markdown.`;
+You must return a valid JSON object with the structure specified in the user prompt. Each section should be a string containing well-formatted markdown.
+
+CRITICAL JSON RULES:
+- Return ONLY the JSON object, no other text
+- Use double quotes for all strings
+- Escape newlines as \\n within strings
+- Escape quotes as \\" within strings
+- Do NOT include actual line breaks inside string values
+- Keep each section value as a single-line string with \\n for line breaks`;
 
 export interface BusinessPlanContext {
   businessName: string;
