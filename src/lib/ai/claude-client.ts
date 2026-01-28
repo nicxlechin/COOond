@@ -1,8 +1,15 @@
 import Groq from 'groq-sdk';
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+let groqClient: Groq | null = null;
+
+function getGroqClient(): Groq {
+  if (!groqClient) {
+    groqClient = new Groq({
+      apiKey: process.env.GROQ_API_KEY,
+    });
+  }
+  return groqClient;
+}
 
 export async function generateWithClaude(
   systemPrompt: string,
@@ -12,6 +19,8 @@ export async function generateWithClaude(
     temperature?: number;
   }
 ): Promise<string> {
+  const groq = getGroqClient();
+
   const completion = await groq.chat.completions.create({
     model: 'llama-3.3-70b-versatile',
     max_tokens: options?.maxTokens ?? 8000,

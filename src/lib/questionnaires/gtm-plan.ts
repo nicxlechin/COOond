@@ -1,8 +1,9 @@
 import type { Questionnaire } from './types';
 
 export const gtmPlanQuestionnaire: Questionnaire = {
-  planType: 'gtm_plan',
-  totalEstimatedMinutes: 20,
+  id: 'gtm_plan',
+  title: 'Go-to-Market Plan',
+  description: 'Create a comprehensive launch strategy for your product or service',
   steps: [
     {
       id: 'product_overview',
@@ -136,7 +137,7 @@ export const gtmPlanQuestionnaire: Questionnaire = {
         },
         {
           id: 'geographic_focus',
-          type: 'multi-select',
+          type: 'multiselect',
           label: "What's your geographic focus for this launch?",
           required: true,
           options: [
@@ -218,7 +219,7 @@ export const gtmPlanQuestionnaire: Questionnaire = {
       questions: [
         {
           id: 'primary_channels',
-          type: 'multi-select',
+          type: 'multiselect',
           label: 'Which marketing channels do you plan to use? (Select top 3)',
           required: true,
           options: [
