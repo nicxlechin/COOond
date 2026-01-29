@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { DeletePlanButton } from '@/components/plans/delete-plan-button';
 import {
   FileText,
   Rocket,
@@ -78,11 +79,11 @@ export default async function PlansPage() {
           {plans.map((plan) => (
             <Card key={plan.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-0">
-                <Link
-                  href={getPlanLink(plan)}
-                  className="flex items-center justify-between p-6"
-                >
-                  <div className="flex items-center gap-4">
+                <div className="flex items-center justify-between p-6">
+                  <Link
+                    href={getPlanLink(plan)}
+                    className="flex items-center gap-4 flex-1"
+                  >
                     <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-gray-100">
                       {plan.plan_type === 'business_plan' ? (
                         <FileText className="w-6 h-6 text-gray-600" />
@@ -111,9 +112,17 @@ export default async function PlansPage() {
                         })}
                       </p>
                     </div>
+                  </Link>
+                  <div className="flex items-center gap-2">
+                    <DeletePlanButton
+                      planId={plan.id}
+                      planTitle={plan.title || (plan.plan_type === 'business_plan' ? 'Business Plan' : 'Go-to-Market Plan')}
+                    />
+                    <Link href={getPlanLink(plan)}>
+                      <ArrowRight className="w-5 h-5 text-gray-400" />
+                    </Link>
                   </div>
-                  <ArrowRight className="w-5 h-5 text-gray-400" />
-                </Link>
+                </div>
               </CardContent>
             </Card>
           ))}
