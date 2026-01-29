@@ -45,18 +45,26 @@ When the founder says "not sure", "help me", "I don't know":
 - Use **bold** for key numbers and recommendations
 - Use bullet points for lists
 - Use > blockquotes for key insights
-- For tables, use proper markdown table syntax with pipes and a header separator row:
-  | Column 1 | Column 2 | Column 3 |
-  |----------|----------|----------|
-  | Value 1  | Value 2  | Value 3  |
 
-## CRITICAL - NEWLINES IN JSON OUTPUT:
-- Include newlines using \\n escape sequence
-- Every bullet point on its own line (\\n before each "- ")
-- Every numbered item on its own line (\\n before each "1. ", "2. ", etc.)
-- Tables MUST have \\n between each row: "| Col1 | Col2 |\\n|------|------|\\n| Val1 | Val2 |"
-- Headers should have \\n\\n before them
-- Paragraphs separated by \\n\\n`;
+## CRITICAL TABLE FORMAT:
+When creating tables, you MUST follow this EXACT format:
+| Header1 | Header2 | Header3 |
+|---------|---------|---------|
+| Data1   | Data2   | Data3   |
+| Data4   | Data5   | Data6   |
+
+TABLE RULES:
+1. The SECOND row MUST be separator with dashes: |---------|---------|
+2. NO blank lines between rows
+3. Every row starts and ends with |
+4. In JSON: "| H1 | H2 |\\n|---|---|\\n| D1 | D2 |"
+
+## NEWLINES IN JSON OUTPUT:
+- Use \\n for line breaks
+- Bullet points: "\\n- Item 1\\n- Item 2"
+- Numbered lists: "\\n1. First\\n2. Second"
+- Paragraphs: "Para 1\\n\\nPara 2"
+- Headers: "\\n\\n## Header\\n\\n"`;
 
 export interface BusinessPlanContext {
   businessName: string;
