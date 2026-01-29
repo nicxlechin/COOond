@@ -56,6 +56,8 @@ interface PlanViewerProps {
   content: Record<string, string>;
   status: PlanStatus;
   isFinalized: boolean;
+  createdAt: string;
+  finalizedAt: string | null;
 }
 
 export function PlanViewer({
@@ -66,6 +68,8 @@ export function PlanViewer({
   content,
   status,
   isFinalized,
+  createdAt,
+  finalizedAt,
 }: PlanViewerProps) {
   const router = useRouter();
   const [activeSection, setActiveSection] = useState(sections[0]?.key);
@@ -530,6 +534,12 @@ export function PlanViewer({
               <Trash2 className="w-3 h-3 mr-1" />
               Delete
             </Button>
+          </div>
+          <div className="mt-3 text-xs text-gray-500 space-y-1">
+            <p>Created: {new Date(createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+            {finalizedAt && (
+              <p>Finalized: {new Date(finalizedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+            )}
           </div>
         </div>
         <Separator />

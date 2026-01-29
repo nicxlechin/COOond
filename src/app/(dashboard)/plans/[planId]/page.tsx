@@ -55,6 +55,8 @@ export default async function PlanViewPage({ params }: PageProps) {
       content={content || {}}
       status={plan.status}
       isFinalized={!!plan.finalized_at}
+      createdAt={plan.created_at}
+      finalizedAt={plan.finalized_at}
     />
   );
 }
