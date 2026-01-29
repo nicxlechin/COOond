@@ -50,7 +50,12 @@ export async function POST(
     const milestonesSection = content.roadmap || content.milestones_and_metrics || content.launch_timeline || '';
     const actionItems = content.next_steps || content.immediate_action_items || content.quick_wins || '';
 
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
     const extractionPrompt = `
+Today's date is: ${todayStr}
+
 Extract milestones from this business plan:
 
 ## Milestones Section:
@@ -59,7 +64,19 @@ ${milestonesSection}
 ## Action Items:
 ${actionItems}
 
-Return a JSON array of 8-12 milestones with: title, description, target_date (ISO string, estimate relative to today), category (revenue|product|marketing|operations|hiring|other), priority (1=high, 2=medium, 3=low).
+Return a JSON array of 8-12 milestones with:
+- title: action-oriented title
+- description: brief description
+- target_date: ISO date string (YYYY-MM-DD format), calculated relative to today (${todayStr}). Use realistic timeframes:
+  * "This week" items: within 7 days
+  * "This month" items: within 30 days
+  * "90 days" items: within 90 days
+  * "6 months" items: within 180 days
+  * "1 year" items: within 365 days
+- category: one of "revenue", "product", "marketing", "operations", "hiring", "other"
+- priority: 1 (high), 2 (medium), or 3 (low)
+
+Make sure all dates are in the future starting from ${todayStr}.
 `;
 
     let milestones: ExtractedMilestone[] = [];
@@ -93,18 +110,41 @@ Return a JSON array of 8-12 milestones with: title, description, target_date (IS
       throw updateError;
     }
 
-    // Insert milestones
+    // Insert milestones with validated dates
     if (milestones.length > 0) {
-      const milestonesToInsert = milestones.map((m) => ({
-        plan_id: planId,
-        user_id: user.id,
-        title: m.title,
-        description: m.description,
-        target_date: m.target_date,
-        category: m.category,
-        priority: m.priority,
-        status: 'not_started' as const,
-      }));
+      const validCategories = ['revenue', 'product', 'marketing', 'operations', 'hiring', 'other'];
+
+      const milestonesToInsert = milestones.map((m, index) => {
+        // Validate and parse date - default to incremental dates if invalid
+        let targetDate: Date;
+        try {
+          targetDate = new Date(m.target_date);
+          if (isNaN(targetDate.getTime())) {
+            throw new Error('Invalid date');
+          }
+        } catch {
+          // Default: spread milestones over the next year
+          targetDate = new Date(today);
+          targetDate.setDate(targetDate.getDate() + (index + 1) * 30); // 30 days apart
+        }
+
+        // Ensure date is in the future
+        if (targetDate < today) {
+          targetDate = new Date(today);
+          targetDate.setDate(targetDate.getDate() + 7 + index * 14);
+        }
+
+        return {
+          plan_id: planId,
+          user_id: user.id,
+          title: m.title || `Milestone ${index + 1}`,
+          description: m.description || '',
+          target_date: targetDate.toISOString(),
+          category: validCategories.includes(m.category) ? m.category : 'other',
+          priority: [1, 2, 3].includes(m.priority) ? m.priority : 2,
+          status: 'not_started' as const,
+        };
+      });
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase.from('milestones') as any).insert(milestonesToInsert);

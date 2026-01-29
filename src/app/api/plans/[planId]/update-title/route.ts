@@ -36,9 +36,7 @@ export async function POST(
       return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
     }
 
-    if (plan.finalized_at) {
-      return NextResponse.json({ error: 'Cannot edit finalized plan' }, { status: 400 });
-    }
+    // Allow title editing even for finalized plans
 
     // Update the title
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -16,6 +16,16 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import {
   MessageSquare,
@@ -26,6 +36,7 @@ import {
   Pencil,
   Save,
   X,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -68,6 +79,8 @@ export function PlanViewer({
   const [isSaving, setIsSaving] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleRefine = async () => {
     if (!refinementSection || !feedback.trim()) return;
@@ -314,6 +327,27 @@ export function PlanViewer({
     setRefinementOpen(true);
   };
 
+  const deletePlan = async () => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/plans/${planId}/delete`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete plan');
+      }
+
+      toast.success('Plan deleted');
+      router.push('/plans');
+    } catch (error) {
+      toast.error('Failed to delete plan');
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+    }
+  };
+
   const saveTitle = async () => {
     if (!editedTitle.trim()) return;
 
@@ -406,17 +440,15 @@ export function PlanViewer({
           ) : (
             <div
               className="group cursor-pointer"
-              onClick={() => !isFinalized && setIsEditingTitle(true)}
+              onClick={() => setIsEditingTitle(true)}
             >
               <h2 className="font-semibold text-lg text-gray-900 mb-2 flex items-center gap-2">
                 {title}
-                {!isFinalized && (
-                  <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-                )}
+                <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
               </h2>
             </div>
           )}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge variant={isFinalized ? 'default' : 'secondary'}>
               {isFinalized ? 'Finalized' : 'Draft'}
             </Badge>
@@ -426,6 +458,15 @@ export function PlanViewer({
                 PDF
               </Button>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDeleteDialogOpen(true)}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="w-3 h-3 mr-1" />
+              Delete
+            </Button>
           </div>
         </div>
         <Separator />
@@ -632,6 +673,31 @@ export function PlanViewer({
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this plan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the plan
+              and all associated milestones and check-ins.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={deletePlan}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : null}
+              Delete Plan
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
