@@ -52,15 +52,18 @@ export async function POST(request: NextRequest) {
 
     let systemPrompt: string;
     let userPrompt: string;
+    let planTitle: string | null = null;
 
     if (plan.plan_type === 'business_plan') {
       const context = mapResponsesToBusinessPlanContext(responses);
       systemPrompt = BUSINESS_PLAN_SYSTEM_PROMPT;
       userPrompt = buildBusinessPlanPrompt(context);
+      planTitle = context.businessName || (responses.business_name as string) || null;
     } else if (plan.plan_type === 'gtm_plan') {
       const context = mapResponsesToGTMContext(responses);
       systemPrompt = GTM_PLAN_SYSTEM_PROMPT;
       userPrompt = buildGTMPlanPrompt(context);
+      planTitle = context.productName || (responses.product_name as string) || null;
     } else {
       return NextResponse.json({ error: 'Unsupported plan type' }, { status: 400 });
     }
@@ -74,7 +77,7 @@ export async function POST(request: NextRequest) {
     // Parse the JSON response
     const generatedContent = parseJSONResponse<Record<string, string>>(rawResponse);
 
-    // Update plan with generated content
+    // Update plan with generated content and title
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: updateError } = await (supabase.from('plans') as any)
       .update({
@@ -82,6 +85,7 @@ export async function POST(request: NextRequest) {
         status: 'review',
         generation_version: (plan.generation_version || 0) + 1,
         questionnaire_completed_at: new Date().toISOString(),
+        ...(planTitle && { title: planTitle }),
       })
       .eq('id', planId);
 

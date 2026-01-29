@@ -46,9 +46,9 @@ export async function POST(
       return NextResponse.json({ error: 'No content to finalize' }, { status: 400 });
     }
 
-    // Extract milestones from the plan
-    const milestonesSection = content.milestones_and_metrics || content.launch_timeline || '';
-    const actionItems = content.immediate_action_items || content.quick_wins || '';
+    // Extract milestones from the plan - use correct section keys
+    const milestonesSection = content.roadmap || content.milestones_and_metrics || content.launch_timeline || '';
+    const actionItems = content.next_steps || content.immediate_action_items || content.quick_wins || '';
 
     const extractionPrompt = `
 Extract milestones from this business plan:
@@ -68,9 +68,12 @@ Return a JSON array of 8-12 milestones with: title, description, target_date (IS
       const rawResponse = await generateWithClaude(
         MILESTONE_EXTRACTION_PROMPT,
         extractionPrompt,
-        { maxTokens: 2000, temperature: 0.3 }
+        { maxTokens: 2000, temperature: 0.3, jsonMode: true }
       );
-      milestones = parseJSONResponse<ExtractedMilestone[]>(rawResponse);
+      const parsed = parseJSONResponse<ExtractedMilestone[] | { milestones: ExtractedMilestone[] }>(rawResponse);
+      // Handle both array format and object format
+      milestones = Array.isArray(parsed) ? parsed : (parsed.milestones || []);
+      console.log('Extracted milestones:', milestones.length);
     } catch (err) {
       console.error('Failed to extract milestones:', err);
       // Continue without milestones

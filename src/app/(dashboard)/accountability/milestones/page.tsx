@@ -2,14 +2,20 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Target, Calendar, CheckCircle } from 'lucide-react';
+import { Target, Calendar, CheckCircle, Filter } from 'lucide-react';
 import { format, formatDistanceToNow, isPast } from 'date-fns';
 import { MilestoneActions } from '@/components/accountability/milestone-actions';
-import type { Milestone } from '@/types/database';
+import { MilestoneFilters } from '@/components/accountability/milestone-filters';
+import type { Milestone, Plan } from '@/types/database';
 
 type MilestoneWithPlan = Milestone & { plans: { title: string; plan_type: string } | null };
 
-export default async function MilestonesPage() {
+interface MilestonesPageProps {
+  searchParams: Promise<{ plan?: string }>;
+}
+
+export default async function MilestonesPage({ searchParams }: MilestonesPageProps) {
+  const params = await searchParams;
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -17,11 +23,26 @@ export default async function MilestonesPage() {
     redirect('/login');
   }
 
-  const { data: milestones } = await supabase
+  // Get all plans for filter dropdown
+  const { data: plans } = await supabase
+    .from('plans')
+    .select('id, title, plan_type')
+    .eq('user_id', user.id)
+    .eq('status', 'finalized') as { data: Pick<Plan, 'id' | 'title' | 'plan_type'>[] | null };
+
+  // Build milestones query
+  let milestonesQuery = supabase
     .from('milestones')
     .select('*, plans(title, plan_type)')
     .eq('user_id', user.id)
-    .order('target_date', { ascending: true }) as { data: MilestoneWithPlan[] | null };
+    .order('target_date', { ascending: true });
+
+  // Apply plan filter if selected
+  if (params.plan) {
+    milestonesQuery = milestonesQuery.eq('plan_id', params.plan);
+  }
+
+  const { data: milestones } = await milestonesQuery as { data: MilestoneWithPlan[] | null };
 
   const activeMilestones = milestones?.filter(
     (m) => m.status !== 'completed' && m.status !== 'deferred'
@@ -48,6 +69,12 @@ export default async function MilestonesPage() {
     return colors[category] || colors.other;
   };
 
+  const getPlanTypeBadge = (planType: string) => {
+    return planType === 'business_plan'
+      ? 'bg-indigo-100 text-indigo-800'
+      : 'bg-emerald-100 text-emerald-800';
+  };
+
   return (
     <div className="p-6 lg:p-8 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-8">
@@ -59,6 +86,13 @@ export default async function MilestonesPage() {
           <p className="text-gray-600 mt-1">Track your business milestones and goals</p>
         </div>
       </div>
+
+      {/* Filters */}
+      {plans && plans.length > 0 && (
+        <div className="mb-6">
+          <MilestoneFilters plans={plans} currentPlanId={params.plan} />
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -132,13 +166,22 @@ export default async function MilestonesPage() {
                               {milestone.description}
                             </p>
                           )}
-                          <div className="flex items-center gap-3 mt-2">
+                          <div className="flex flex-wrap items-center gap-2 mt-2">
                             <Badge
                               variant="secondary"
                               className={getCategoryBadge(milestone.category)}
                             >
                               {milestone.category}
                             </Badge>
+                            {milestone.plans && (
+                              <Badge
+                                variant="secondary"
+                                className={getPlanTypeBadge(milestone.plans.plan_type)}
+                              >
+                                {milestone.plans.title ||
+                                  (milestone.plans.plan_type === 'business_plan' ? 'Business Plan' : 'GTM Plan')}
+                              </Badge>
+                            )}
                             {milestone.target_date && (
                               <span
                                 className={`text-sm flex items-center gap-1 ${
@@ -161,6 +204,7 @@ export default async function MilestonesPage() {
                         <MilestoneActions
                           milestoneId={milestone.id}
                           currentStatus={milestone.status}
+                          targetDate={milestone.target_date}
                         />
                       </div>
                     </div>
@@ -170,7 +214,9 @@ export default async function MilestonesPage() {
             </div>
           ) : (
             <p className="text-center text-gray-500 py-8">
-              No active milestones. Finalize a plan to create milestones.
+              {params.plan
+                ? 'No milestones for this plan yet.'
+                : 'No active milestones. Finalize a plan to create milestones.'}
             </p>
           )}
         </CardContent>
@@ -197,14 +243,25 @@ export default async function MilestonesPage() {
                     <p className="font-medium text-gray-900 line-through opacity-60">
                       {milestone.title}
                     </p>
-                    {milestone.completed_at && (
-                      <p className="text-sm text-gray-500">
-                        Completed{' '}
-                        {formatDistanceToNow(new Date(milestone.completed_at), {
-                          addSuffix: true,
-                        })}
-                      </p>
-                    )}
+                    <div className="flex items-center gap-2 mt-1">
+                      {milestone.plans && (
+                        <Badge
+                          variant="secondary"
+                          className={`${getPlanTypeBadge(milestone.plans.plan_type)} text-xs`}
+                        >
+                          {milestone.plans.title ||
+                            (milestone.plans.plan_type === 'business_plan' ? 'Business Plan' : 'GTM Plan')}
+                        </Badge>
+                      )}
+                      {milestone.completed_at && (
+                        <p className="text-sm text-gray-500">
+                          Completed{' '}
+                          {formatDistanceToNow(new Date(milestone.completed_at), {
+                            addSuffix: true,
+                          })}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}

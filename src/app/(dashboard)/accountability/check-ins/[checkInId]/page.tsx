@@ -4,12 +4,13 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { CheckIn } from '@/types/database';
+import type { CheckIn, Milestone, Plan } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Loader2, Plus, X, CheckCircle, Sparkles } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Loader2, Plus, X, CheckCircle, Sparkles, Target, Lightbulb, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -17,12 +18,14 @@ interface PageProps {
   params: Promise<{ checkInId: string }>;
 }
 
+type MilestoneWithPlan = Milestone & { plans: Pick<Plan, 'title' | 'plan_type'> | null };
+
 const MOOD_OPTIONS = [
-  { value: 1, label: 'Struggling', emoji: '\ud83d\ude2b' },
-  { value: 2, label: 'Concerned', emoji: '\ud83d\ude1f' },
-  { value: 3, label: 'Okay', emoji: '\ud83d\ude10' },
-  { value: 4, label: 'Good', emoji: '\ud83d\ude0a' },
-  { value: 5, label: 'Great', emoji: '\ud83d\ude80' },
+  { value: 1, label: 'Struggling', emoji: '😫' },
+  { value: 2, label: 'Concerned', emoji: '😟' },
+  { value: 3, label: 'Okay', emoji: '😐' },
+  { value: 4, label: 'Good', emoji: '😊' },
+  { value: 5, label: 'Great', emoji: '🚀' },
 ];
 
 export default function CheckInPage({ params }: PageProps) {
@@ -32,11 +35,18 @@ export default function CheckInPage({ params }: PageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false);
   const [aiInsights, setAiInsights] = useState<{
     encouragement: string;
     suggestions: string[];
+    potential_risks: string[];
     celebration_worthy: boolean;
+    suggested_milestones?: Array<{ title: string; description: string }>;
   } | null>(null);
+
+  const [checkIn, setCheckIn] = useState<CheckIn | null>(null);
+  const [activeMilestones, setActiveMilestones] = useState<MilestoneWithPlan[]>([]);
+  const [completedMilestoneIds, setCompletedMilestoneIds] = useState<string[]>([]);
 
   const [moodScore, setMoodScore] = useState<number | null>(null);
   const [wins, setWins] = useState<string[]>(['']);
@@ -44,31 +54,62 @@ export default function CheckInPage({ params }: PageProps) {
   const [blockers, setBlockers] = useState<string[]>([]);
   const [priorities, setPriorities] = useState<string[]>(['', '', '']);
   const [notes, setNotes] = useState('');
+  const [journalDump, setJournalDump] = useState('');
 
   useEffect(() => {
-    const loadCheckIn = async () => {
+    const loadData = async () => {
       const supabase = createClient();
-      const { data } = await supabase
+
+      // Load check-in
+      const { data: checkInData } = await supabase
         .from('check_ins')
         .select('*')
         .eq('id', checkInId)
         .single() as { data: CheckIn | null };
 
-      if (data?.status === 'completed') {
-        setIsComplete(true);
-        setMoodScore(data.mood_score);
-        setWins(data.wins || []);
-        setChallenges(data.challenges || []);
-        setBlockers(data.blockers || []);
-        setPriorities(data.next_week_priorities || []);
-        setNotes(data.notes || '');
-        setAiInsights(data.ai_insights as typeof aiInsights);
+      if (checkInData) {
+        setCheckIn(checkInData);
+        if (checkInData.status === 'completed') {
+          setIsComplete(true);
+          setMoodScore(checkInData.mood_score);
+          setWins(checkInData.wins || []);
+          setChallenges(checkInData.challenges || []);
+          setBlockers(checkInData.blockers || []);
+          setPriorities(checkInData.next_week_priorities || []);
+          setNotes(checkInData.notes || '');
+          setAiInsights(checkInData.ai_insights as typeof aiInsights);
+        }
       }
+
+      // Load user's active milestones
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: milestonesData } = await supabase
+          .from('milestones')
+          .select('*, plans(title, plan_type)')
+          .eq('user_id', user.id)
+          .in('status', ['not_started', 'in_progress'])
+          .order('target_date', { ascending: true })
+          .limit(10) as { data: MilestoneWithPlan[] | null };
+
+        if (milestonesData) {
+          setActiveMilestones(milestonesData);
+        }
+      }
+
       setIsLoading(false);
     };
 
-    loadCheckIn();
+    loadData();
   }, [checkInId]);
+
+  const toggleMilestoneComplete = (milestoneId: string) => {
+    setCompletedMilestoneIds((prev) =>
+      prev.includes(milestoneId)
+        ? prev.filter((id) => id !== milestoneId)
+        : [...prev, milestoneId]
+    );
+  };
 
   const addItem = (
     setter: React.Dispatch<React.SetStateAction<string[]>>,
@@ -96,6 +137,102 @@ export default function CheckInPage({ params }: PageProps) {
     setter(updated);
   };
 
+  const generateSuggestionsFromJournal = async () => {
+    if (!journalDump.trim()) {
+      toast.error('Please write something in the journal first');
+      return;
+    }
+
+    setIsGeneratingSuggestions(true);
+    try {
+      const response = await fetch('/api/check-ins/analyze-journal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ journalContent: journalDump }),
+      });
+
+      if (!response.ok) throw new Error('Failed to analyze journal');
+
+      const data = await response.json();
+
+      // Pre-fill some fields from the analysis
+      if (data.extractedWins && data.extractedWins.length > 0) {
+        setWins([...wins.filter((w) => w.trim()), ...data.extractedWins]);
+      }
+      if (data.extractedChallenges && data.extractedChallenges.length > 0) {
+        setChallenges([...challenges.filter((c) => c.trim()), ...data.extractedChallenges]);
+      }
+      if (data.suggestedPriorities && data.suggestedPriorities.length > 0) {
+        setPriorities(data.suggestedPriorities.slice(0, 3));
+      }
+      if (data.suggestedMilestones) {
+        setAiInsights((prev) => ({
+          ...prev,
+          encouragement: prev?.encouragement || '',
+          suggestions: prev?.suggestions || [],
+          potential_risks: prev?.potential_risks || [],
+          celebration_worthy: prev?.celebration_worthy || false,
+          suggested_milestones: data.suggestedMilestones,
+        }));
+      }
+
+      toast.success('Analysis complete! Review the extracted items below.');
+    } catch (error) {
+      toast.error('Failed to analyze journal');
+    } finally {
+      setIsGeneratingSuggestions(false);
+    }
+  };
+
+  const createMilestoneFromSuggestion = async (title: string, description: string) => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    // Get a default plan (most recent)
+    const { data: plans } = await supabase
+      .from('plans')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('status', 'finalized')
+      .order('finalized_at', { ascending: false })
+      .limit(1) as { data: { id: string }[] | null };
+
+    const planId = plans?.[0]?.id;
+
+    if (!planId) {
+      toast.error('Please finalize a plan first to create milestones');
+      return;
+    }
+
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() + 14); // 2 weeks from now
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from('milestones') as any).insert({
+      plan_id: planId,
+      user_id: user.id,
+      title,
+      description,
+      target_date: targetDate.toISOString(),
+      category: 'other',
+      priority: 2,
+      status: 'not_started',
+    });
+
+    if (error) {
+      toast.error('Failed to create milestone');
+    } else {
+      toast.success('Milestone created!');
+      // Remove from suggestions
+      setAiInsights((prev) => ({
+        ...prev!,
+        suggested_milestones: prev?.suggested_milestones?.filter((m) => m.title !== title),
+      }));
+    }
+  };
+
   const handleSubmit = async () => {
     if (!moodScore) {
       toast.error('Please select how you are feeling');
@@ -115,6 +252,19 @@ export default function CheckInPage({ params }: PageProps) {
     setIsSubmitting(true);
 
     try {
+      const supabase = createClient();
+
+      // Mark milestones as completed
+      if (completedMilestoneIds.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase.from('milestones') as any)
+          .update({
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+          })
+          .in('id', completedMilestoneIds);
+      }
+
       // Get AI insights
       const insightsResponse = await fetch('/api/check-ins/insights', {
         method: 'POST',
@@ -125,6 +275,7 @@ export default function CheckInPage({ params }: PageProps) {
           blockers: filteredBlockers,
           priorities: filteredPriorities,
           moodScore,
+          completedMilestones: completedMilestoneIds.length,
         }),
       });
 
@@ -135,14 +286,14 @@ export default function CheckInPage({ params }: PageProps) {
       }
 
       // Save check-in
-      const supabase = createClient();
+      const allNotes = [notes, journalDump].filter((n) => n.trim()).join('\n\n---\n\n');
       const updateData = {
         mood_score: moodScore,
         wins: filteredWins,
         challenges: filteredChallenges,
         blockers: filteredBlockers,
         next_week_priorities: filteredPriorities,
-        notes: notes.trim() || null,
+        notes: allNotes || null,
         ai_insights: insights,
         status: 'completed' as const,
         completed_at: new Date().toISOString(),
@@ -180,6 +331,11 @@ export default function CheckInPage({ params }: PageProps) {
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
           <h1 className="text-2xl font-semibold text-gray-900">Check-in Complete!</h1>
+          {completedMilestoneIds.length > 0 && (
+            <p className="text-green-600 mt-2">
+              You completed {completedMilestoneIds.length} milestone{completedMilestoneIds.length > 1 ? 's' : ''} this week!
+            </p>
+          )}
         </div>
 
         {aiInsights && (
@@ -204,9 +360,20 @@ export default function CheckInPage({ params }: PageProps) {
                 </div>
               )}
 
+              {aiInsights.potential_risks && aiInsights.potential_risks.length > 0 && (
+                <div>
+                  <p className="font-medium text-gray-900 mb-2">Watch out for:</p>
+                  <ul className="list-disc list-inside space-y-1 text-orange-600">
+                    {aiInsights.potential_risks.map((risk, i) => (
+                      <li key={i}>{risk}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {aiInsights.celebration_worthy && (
                 <div className="p-4 bg-yellow-50 rounded-lg text-center">
-                  <span className="text-2xl">\ud83c\udf89</span>
+                  <span className="text-2xl">🎉</span>
                   <p className="font-medium text-yellow-800 mt-2">
                     This week deserves celebration!
                   </p>
@@ -216,7 +383,10 @@ export default function CheckInPage({ params }: PageProps) {
           </Card>
         )}
 
-        <div className="text-center">
+        <div className="flex gap-4 justify-center">
+          <Button variant="outline" onClick={() => router.push('/accountability/milestones')}>
+            View Milestones
+          </Button>
           <Button onClick={() => router.push('/dashboard')}>Back to Dashboard</Button>
         </div>
       </div>
@@ -231,6 +401,126 @@ export default function CheckInPage({ params }: PageProps) {
       </div>
 
       <div className="space-y-8">
+        {/* Journal Dump (optional, first for quick entry) */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lightbulb className="w-5 h-5" />
+              Quick Journal Dump (Optional)
+            </CardTitle>
+            <CardDescription>
+              Write freely about your week. We'll help extract wins, challenges, and suggest action items.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Textarea
+              value={journalDump}
+              onChange={(e) => setJournalDump(e.target.value)}
+              placeholder="Just write whatever comes to mind... What happened this week? What's on your mind? What are you thinking about for next week?"
+              rows={6}
+            />
+            {journalDump.trim() && (
+              <Button
+                variant="outline"
+                onClick={generateSuggestionsFromJournal}
+                disabled={isGeneratingSuggestions}
+              >
+                {isGeneratingSuggestions ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Analyze & Extract
+                  </>
+                )}
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Suggested Milestones from Journal */}
+        {aiInsights?.suggested_milestones && aiInsights.suggested_milestones.length > 0 && (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Target className="w-5 h-5" />
+                Suggested Action Items
+              </CardTitle>
+              <CardDescription>
+                Based on your journal, here are some milestones you might want to track
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {aiInsights.suggested_milestones.map((milestone, i) => (
+                <div key={i} className="flex items-start justify-between gap-3 p-3 bg-white rounded-lg">
+                  <div>
+                    <p className="font-medium text-gray-900">{milestone.title}</p>
+                    <p className="text-sm text-gray-600">{milestone.description}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => createMilestoneFromSuggestion(milestone.title, milestone.description)}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Milestone Progress */}
+        {activeMilestones.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="w-5 h-5" />
+                Milestone Progress
+              </CardTitle>
+              <CardDescription>
+                Did you complete any milestones this week? Check them off!
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {activeMilestones.map((milestone) => (
+                <div
+                  key={milestone.id}
+                  className={cn(
+                    'flex items-start gap-3 p-3 rounded-lg border transition-colors',
+                    completedMilestoneIds.includes(milestone.id)
+                      ? 'bg-green-50 border-green-200'
+                      : 'hover:bg-gray-50'
+                  )}
+                >
+                  <Checkbox
+                    checked={completedMilestoneIds.includes(milestone.id)}
+                    onCheckedChange={() => toggleMilestoneComplete(milestone.id)}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className={cn(
+                      'font-medium text-gray-900',
+                      completedMilestoneIds.includes(milestone.id) && 'line-through opacity-60'
+                    )}>
+                      {milestone.title}
+                    </p>
+                    {milestone.plans && (
+                      <Badge variant="secondary" className="text-xs mt-1">
+                        {milestone.plans.title || (milestone.plans.plan_type === 'business_plan' ? 'Business Plan' : 'GTM Plan')}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Mood */}
         <Card>
           <CardHeader>

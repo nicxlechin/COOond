@@ -46,7 +46,7 @@ export function Sidebar({ userName }: SidebarProps) {
         <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground">
           <Briefcase className="w-4 h-4" />
         </div>
-        <span className="font-semibold text-gray-900">COO on Demand</span>
+        <span className="font-semibold text-gray-900">Co-COO</span>
       </div>
 
       {/* Navigation */}

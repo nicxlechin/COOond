@@ -21,7 +21,7 @@ export default function LandingPage() {
               <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground">
                 <Briefcase className="w-4 h-4" />
               </div>
-              <span className="font-semibold text-gray-900">COO on Demand</span>
+              <span className="font-semibold text-gray-900">Co-COO</span>
             </div>
             <div className="flex items-center gap-4">
               <Link
@@ -201,7 +201,7 @@ export default function LandingPage() {
           </h2>
           <p className="text-lg text-primary-foreground/80 mb-8">
             Join thousands of entrepreneurs who have launched their businesses
-            with COO on Demand.
+            with Co-COO.
           </p>
           <Button
             asChild
@@ -225,7 +225,7 @@ export default function LandingPage() {
               <div className="flex items-center justify-center w-6 h-6 rounded bg-primary text-primary-foreground">
                 <Briefcase className="w-3 h-3" />
               </div>
-              <span className="font-semibold text-gray-900">COO on Demand</span>
+              <span className="font-semibold text-gray-900">Co-COO</span>
             </div>
             <p className="text-sm text-gray-500">
               Built for solopreneurs and first-time founders.

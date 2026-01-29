@@ -17,17 +17,25 @@ export async function generateWithClaude(
   options?: {
     maxTokens?: number;
     temperature?: number;
+    jsonMode?: boolean;
   }
 ): Promise<string> {
   const groq = getGroqClient();
+
+  const useJsonMode = options?.jsonMode !== false; // Default to true for backward compatibility
 
   const completion = await groq.chat.completions.create({
     model: 'llama-3.3-70b-versatile',
     max_tokens: options?.maxTokens ?? 8000,
     temperature: options?.temperature ?? 0.7,
-    response_format: { type: 'json_object' },
+    ...(useJsonMode && { response_format: { type: 'json_object' } }),
     messages: [
-      { role: 'system', content: systemPrompt + '\n\nYou MUST respond with valid JSON only. No markdown, no code blocks, just pure JSON.' },
+      {
+        role: 'system',
+        content: useJsonMode
+          ? systemPrompt + '\n\nYou MUST respond with valid JSON only. No markdown, no code blocks, just pure JSON.'
+          : systemPrompt
+      },
       { role: 'user', content: userPrompt },
     ],
   });

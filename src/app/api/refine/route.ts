@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     const refinedContent = await generateWithClaude(
       REFINEMENT_SYSTEM_PROMPT,
       prompt,
-      { maxTokens: 2000, temperature: 0.6 }
+      { maxTokens: 2000, temperature: 0.6, jsonMode: false }
     );
 
     // Update refinement record

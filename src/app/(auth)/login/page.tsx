@@ -136,7 +136,7 @@ export default function LoginPage() {
           Welcome back
         </h2>
         <p className="mt-2 text-sm text-gray-600">
-          Sign in to your COO on Demand account
+          Sign in to your Co-COO account
         </p>
       </div>
 

@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -22,6 +23,9 @@ import {
   FileText,
   Lock,
   Download,
+  Pencil,
+  Save,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -59,6 +63,11 @@ export function PlanViewer({
   const [feedback, setFeedback] = useState('');
   const [isRefining, setIsRefining] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editContent, setEditContent] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(title);
 
   const handleRefine = async () => {
     if (!refinementSection || !feedback.trim()) return;
@@ -113,13 +122,42 @@ export function PlanViewer({
   };
 
   const handleExportPDF = () => {
-    // Create a printable version
+    // Convert markdown to HTML for each section
+    const convertMarkdown = (md: string) => {
+      return md
+        // Headers
+        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+        // Bold and italic
+        .replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        // Blockquotes
+        .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
+        // Unordered lists
+        .replace(/^- (.*$)/gim, '<li>$1</li>')
+        // Tables (basic support)
+        .replace(/\|(.+)\|/g, (match, content) => {
+          const cells = content.split('|').map((c: string) => c.trim());
+          const isHeader = cells.every((c: string) => c.match(/^-+$/));
+          if (isHeader) return '';
+          return '<tr>' + cells.map((c: string) => `<td>${c}</td>`).join('') + '</tr>';
+        })
+        // Line breaks
+        .replace(/\n\n/g, '</p><p>')
+        .replace(/\n/g, '<br>');
+    };
+
     const printContent = sections
       .map((section) => {
         const sectionContent = content[section.key] || '';
-        return `<h1 style="page-break-before: always; margin-top: 0;">${section.title}</h1>\n${sectionContent}`;
+        const htmlContent = convertMarkdown(sectionContent);
+        return `<section class="plan-section">
+          <h1>${section.title}</h1>
+          <div class="section-content"><p>${htmlContent}</p></div>
+        </section>`;
       })
-      .join('\n\n');
+      .join('\n');
 
     const printWindow = window.open('', '_blank');
     if (printWindow) {
@@ -129,63 +167,126 @@ export function PlanViewer({
         <head>
           <title>${title} - Business Plan</title>
           <style>
+            @page {
+              margin: 1in;
+              size: letter;
+            }
+            * {
+              box-sizing: border-box;
+            }
             body {
-              font-family: 'Georgia', serif;
-              line-height: 1.8;
-              max-width: 800px;
-              margin: 0 auto;
-              padding: 40px;
-              color: #1a1a1a;
+              font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+              line-height: 1.7;
+              max-width: 100%;
+              margin: 0;
+              padding: 0;
+              color: #2d3748;
+              font-size: 11pt;
             }
-            h1 {
-              font-size: 28px;
-              border-bottom: 2px solid #1a1a1a;
-              padding-bottom: 10px;
-              margin-top: 40px;
-            }
-            h2 { font-size: 22px; margin-top: 30px; color: #333; }
-            h3 { font-size: 18px; margin-top: 24px; color: #444; }
-            p { margin: 16px 0; }
-            ul, ol { margin: 16px 0; padding-left: 24px; }
-            li { margin: 8px 0; }
-            strong { color: #000; }
-            blockquote {
-              border-left: 4px solid #1a1a1a;
-              padding-left: 20px;
-              margin: 20px 0;
-              font-style: italic;
-              background: #f9f9f9;
-              padding: 16px 20px;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              margin: 20px 0;
-            }
-            th, td {
-              border: 1px solid #ddd;
-              padding: 12px;
-              text-align: left;
-            }
-            th { background: #f5f5f5; font-weight: bold; }
             .cover-page {
               text-align: center;
-              padding: 100px 0;
+              padding: 3in 1in 2in 1in;
               page-break-after: always;
+              min-height: 100vh;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
             }
             .cover-page h1 {
-              font-size: 42px;
+              font-size: 32pt;
+              font-weight: 700;
+              color: #1a202c;
+              margin: 0 0 16px 0;
               border: none;
-              margin-bottom: 20px;
             }
             .cover-page .subtitle {
-              font-size: 18px;
-              color: #666;
+              font-size: 14pt;
+              color: #4a5568;
+              margin: 8px 0;
+            }
+            .cover-page .date {
+              font-size: 12pt;
+              color: #718096;
+              margin-top: 48px;
+            }
+            .plan-section {
+              margin-bottom: 32px;
+            }
+            .plan-section h1 {
+              font-size: 18pt;
+              font-weight: 700;
+              color: #1a202c;
+              margin: 24px 0 16px 0;
+              padding-bottom: 8px;
+              border-bottom: 2px solid #3182ce;
+            }
+            .plan-section:first-of-type h1 {
+              margin-top: 0;
+            }
+            .section-content h2 {
+              font-size: 14pt;
+              font-weight: 600;
+              color: #2d3748;
+              margin: 20px 0 12px 0;
+            }
+            .section-content h3 {
+              font-size: 12pt;
+              font-weight: 600;
+              color: #4a5568;
+              margin: 16px 0 8px 0;
+            }
+            .section-content p {
+              margin: 0 0 12px 0;
+            }
+            .section-content ul, .section-content ol {
+              margin: 12px 0;
+              padding-left: 24px;
+            }
+            .section-content li {
+              margin: 4px 0;
+            }
+            .section-content strong {
+              font-weight: 600;
+              color: #1a202c;
+            }
+            .section-content blockquote {
+              border-left: 3px solid #3182ce;
+              background: #ebf8ff;
+              padding: 12px 16px;
+              margin: 16px 0;
+              font-style: normal;
+              color: #2c5282;
+            }
+            .section-content table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 16px 0;
+              font-size: 10pt;
+            }
+            .section-content th, .section-content td {
+              border: 1px solid #e2e8f0;
+              padding: 8px 12px;
+              text-align: left;
+            }
+            .section-content th {
+              background: #f7fafc;
+              font-weight: 600;
+            }
+            .section-content tr:nth-child(even) {
+              background: #f7fafc;
+            }
+            .footer {
+              text-align: center;
+              margin-top: 48px;
+              padding-top: 16px;
+              border-top: 1px solid #e2e8f0;
+              font-size: 9pt;
+              color: #a0aec0;
             }
             @media print {
               body { padding: 0; }
-              h1 { page-break-before: always; }
-              h1:first-of-type { page-break-before: avoid; }
+              .cover-page { padding: 2in 0; }
+              .plan-section { page-break-inside: avoid; }
             }
           </style>
         </head>
@@ -193,15 +294,18 @@ export function PlanViewer({
           <div class="cover-page">
             <h1>${title}</h1>
             <p class="subtitle">Strategic Business Plan</p>
-            <p class="subtitle">Prepared by COO on Demand</p>
-            <p class="subtitle">${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <p class="subtitle">Prepared with Co-COO</p>
+            <p class="date">${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
           </div>
           ${printContent}
+          <div class="footer">
+            Generated with Co-COO - Your AI Business Partner
+          </div>
         </body>
         </html>
       `);
       printWindow.document.close();
-      printWindow.print();
+      setTimeout(() => printWindow.print(), 250);
     }
   };
 
@@ -210,12 +314,108 @@ export function PlanViewer({
     setRefinementOpen(true);
   };
 
+  const saveTitle = async () => {
+    if (!editedTitle.trim()) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/plans/${planId}/update-title`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: editedTitle.trim() }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save title');
+      }
+
+      toast.success('Title updated');
+      setIsEditingTitle(false);
+      router.refresh();
+    } catch (error) {
+      toast.error('Failed to save title');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const startEditing = (sectionKey: string) => {
+    setEditContent(content[sectionKey] || '');
+    setIsEditMode(true);
+  };
+
+  const cancelEditing = () => {
+    setEditContent('');
+    setIsEditMode(false);
+  };
+
+  const saveEdit = async () => {
+    if (!activeSection) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/plans/${planId}/update-section`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sectionKey: activeSection,
+          content: editContent,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save changes');
+      }
+
+      toast.success('Changes saved');
+      setIsEditMode(false);
+      router.refresh();
+    } catch (error) {
+      toast.error('Failed to save changes');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="flex h-[calc(100vh-4rem)]">
       {/* Sidebar - Section Navigation */}
       <div className="w-72 border-r bg-white overflow-y-auto">
         <div className="p-4">
-          <h2 className="font-semibold text-lg text-gray-900 mb-2">{title}</h2>
+          {isEditingTitle ? (
+            <div className="space-y-2">
+              <Input
+                value={editedTitle}
+                onChange={(e) => setEditedTitle(e.target.value)}
+                className="font-semibold"
+                placeholder="Plan name..."
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <Button size="sm" onClick={saveTitle} disabled={isSaving}>
+                  {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save'}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => {
+                  setEditedTitle(title);
+                  setIsEditingTitle(false);
+                }}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div
+              className="group cursor-pointer"
+              onClick={() => !isFinalized && setIsEditingTitle(true)}
+            >
+              <h2 className="font-semibold text-lg text-gray-900 mb-2 flex items-center gap-2">
+                {title}
+                {!isFinalized && (
+                  <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                )}
+              </h2>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <Badge variant={isFinalized ? 'default' : 'secondary'}>
               {isFinalized ? 'Finalized' : 'Draft'}
@@ -263,21 +463,68 @@ export function PlanViewer({
                   <h1 className="text-3xl font-bold text-gray-900">
                     {section.title}
                   </h1>
-                  {!isFinalized && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openRefinement(section)}
-                    >
-                      <MessageSquare className="w-4 h-4 mr-2" />
-                      Refine
-                    </Button>
+                  {!isFinalized && !isEditMode && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => startEditing(section.key)}
+                      >
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openRefinement(section)}
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        Refine with AI
+                      </Button>
+                    </div>
+                  )}
+                  {isEditMode && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={cancelEditing}
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={saveEdit}
+                        disabled={isSaving}
+                      >
+                        {isSaving ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4 mr-2" />
+                        )}
+                        Save
+                      </Button>
+                    </div>
                   )}
                 </div>
 
                 <Card className="shadow-sm">
                   <CardContent className="pt-6">
-                    {sectionContent ? (
+                    {isEditMode ? (
+                      <div className="space-y-4">
+                        <p className="text-sm text-gray-500">
+                          Edit the content below using Markdown formatting. Use ## for headers, **bold**, *italic*, - for lists, etc.
+                        </p>
+                        <Textarea
+                          value={editContent}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          rows={20}
+                          className="font-mono text-sm"
+                          placeholder="Write your content here using Markdown..."
+                        />
+                      </div>
+                    ) : sectionContent ? (
                       <div className="plan-content">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                           {sectionContent}

@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "COO on Demand - AI Business Strategist",
+  title: "Co-COO - AI Business Strategist",
   description: "Generate professional business plans and go-to-market strategies. Your AI-powered business partner for building and scaling.",
 };
 
