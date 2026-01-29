@@ -51,13 +51,21 @@ export function QuestionnaireShell({
       if (planType !== 'gtm_plan' || currentStep !== 1 || importDismissed) return;
 
       const supabase = createClient();
-      const { data: businessPlans } = await supabase
+
+      // First get the current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: businessPlans, error } = await supabase
         .from('plans')
         .select('id, title, questionnaire_responses')
+        .eq('user_id', user.id)
         .eq('plan_type', 'business_plan')
         .eq('status', 'finalized')
         .order('finalized_at', { ascending: false })
-        .limit(1) as { data: Pick<Plan, 'id' | 'title' | 'questionnaire_responses'>[] | null };
+        .limit(1) as { data: Pick<Plan, 'id' | 'title' | 'questionnaire_responses'>[] | null; error: unknown };
+
+      console.log('Business plan check:', { businessPlans, error });
 
       if (businessPlans && businessPlans.length > 0) {
         const bp = businessPlans[0];
@@ -67,10 +75,7 @@ export function QuestionnaireShell({
             title: bp.title || 'Business Plan',
             responses,
           });
-          // Only show if we haven't already imported (check if answers are empty)
-          if (Object.keys(answers).length === 0) {
-            setShowImportBanner(true);
-          }
+          setShowImportBanner(true);
         }
       }
     };
