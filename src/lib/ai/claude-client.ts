@@ -59,10 +59,10 @@ export function parseJSONResponse<T>(response: string): T {
       try {
         return JSON.parse(objectMatch[0]) as T;
       } catch {
-        // Try cleaning control characters
+        // Try cleaning control characters BUT preserve newlines, carriage returns, and tabs
+        // \x09 = tab, \x0A = newline, \x0D = carriage return
         const cleaned = objectMatch[0]
-          .replace(/[\x00-\x1F\x7F]/g, ' ')
-          .replace(/\s+/g, ' ');
+          .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ' ');
         return JSON.parse(cleaned) as T;
       }
     }
