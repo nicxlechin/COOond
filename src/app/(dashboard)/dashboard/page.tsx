@@ -62,7 +62,7 @@ export default async function DashboardPage() {
     status: businessPlans[0].status === 'finalized' ? 'finalized' as const :
             businessPlans[0].status === 'draft' || businessPlans[0].status === 'questionnaire_in_progress' ? 'in_progress' as const : 'not_started' as const,
     planId: businessPlans[0].id,
-    title: businessPlans[0].title,
+    title: businessPlans[0].title || undefined,
   } : null;
 
   const gtmPlanStatus = gtmPlans?.[0] ? {
@@ -70,7 +70,7 @@ export default async function DashboardPage() {
     status: gtmPlans[0].status === 'finalized' ? 'finalized' as const :
             gtmPlans[0].status === 'draft' || gtmPlans[0].status === 'questionnaire_in_progress' ? 'in_progress' as const : 'not_started' as const,
     planId: gtmPlans[0].id,
-    title: gtmPlans[0].title,
+    title: gtmPlans[0].title || undefined,
   } : null;
 
   // Get upcoming milestones

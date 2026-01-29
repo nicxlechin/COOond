@@ -55,10 +55,15 @@ export function useQuestionnaire(planId: string, planType: 'business_plan' | 'gt
 
   // Import multiple answers at once (e.g., from another plan)
   const importAnswers = useCallback((newAnswers: Partial<QuestionnaireResponses>) => {
-    setAnswers((prev) => ({
-      ...prev,
-      ...newAnswers,
-    }));
+    setAnswers((prev) => {
+      const merged: QuestionnaireResponses = { ...prev };
+      for (const [key, value] of Object.entries(newAnswers)) {
+        if (value !== undefined) {
+          merged[key] = value;
+        }
+      }
+      return merged;
+    });
   }, []);
 
   // Save progress to database
