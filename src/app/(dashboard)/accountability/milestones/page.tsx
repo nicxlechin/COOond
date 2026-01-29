@@ -44,10 +44,14 @@ export default async function MilestonesPage({ searchParams }: MilestonesPagePro
 
   const { data: milestones } = await milestonesQuery as { data: MilestoneWithPlan[] | null };
 
+  const inProgressMilestones = milestones?.filter((m) => m.status === 'in_progress');
+  const notStartedMilestones = milestones?.filter(
+    (m) => m.status === 'not_started' || m.status === 'blocked'
+  );
+  const completedMilestones = milestones?.filter((m) => m.status === 'completed');
   const activeMilestones = milestones?.filter(
     (m) => m.status !== 'completed' && m.status !== 'deferred'
   );
-  const completedMilestones = milestones?.filter((m) => m.status === 'completed');
 
   const getStatusColor = (status: string, targetDate: string | null) => {
     if (status === 'completed') return 'bg-green-500';
@@ -95,13 +99,21 @@ export default async function MilestonesPage({ searchParams }: MilestonesPagePro
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-2xl font-bold text-yellow-600">
+              {inProgressMilestones?.length || 0}
+            </p>
+            <p className="text-sm text-gray-500">In Progress</p>
+          </CardContent>
+        </Card>
         <Card>
           <CardContent className="pt-6">
             <p className="text-2xl font-bold text-gray-900">
-              {activeMilestones?.length || 0}
+              {notStartedMilestones?.length || 0}
             </p>
-            <p className="text-sm text-gray-500">Active</p>
+            <p className="text-sm text-gray-500">Not Started</p>
           </CardContent>
         </Card>
         <Card>
@@ -132,15 +144,109 @@ export default async function MilestonesPage({ searchParams }: MilestonesPagePro
         </Card>
       </div>
 
-      {/* Active Milestones */}
+      {/* In Progress Milestones */}
       <Card className="mb-8">
         <CardHeader>
-          <CardTitle>Active Milestones</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-yellow-500" />
+            In Progress
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          {activeMilestones && activeMilestones.length > 0 ? (
+          {inProgressMilestones && inProgressMilestones.length > 0 ? (
             <div className="space-y-4">
-              {activeMilestones.map((milestone) => {
+              {inProgressMilestones.map((milestone) => {
+                const isOverdue =
+                  milestone.target_date && isPast(new Date(milestone.target_date));
+
+                return (
+                  <div
+                    key={milestone.id}
+                    className="flex items-start gap-4 p-4 rounded-lg border border-yellow-200 bg-yellow-50/50 hover:bg-yellow-50 transition-colors"
+                  >
+                    <div
+                      className={`w-3 h-3 rounded-full mt-1.5 ${getStatusColor(
+                        milestone.status,
+                        milestone.target_date
+                      )}`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <h3 className="font-medium text-gray-900">
+                            {milestone.title}
+                          </h3>
+                          {milestone.description && (
+                            <p className="text-sm text-gray-600 mt-1">
+                              {milestone.description}
+                            </p>
+                          )}
+                          <div className="flex flex-wrap items-center gap-2 mt-2">
+                            <Badge
+                              variant="secondary"
+                              className={getCategoryBadge(milestone.category)}
+                            >
+                              {milestone.category}
+                            </Badge>
+                            {milestone.plans && (
+                              <Badge
+                                variant="secondary"
+                                className={getPlanTypeBadge(milestone.plans.plan_type)}
+                              >
+                                {milestone.plans.title ||
+                                  (milestone.plans.plan_type === 'business_plan' ? 'Business Plan' : 'GTM Plan')}
+                              </Badge>
+                            )}
+                            {milestone.target_date && (
+                              <span
+                                className={`text-sm flex items-center gap-1 ${
+                                  isOverdue ? 'text-red-600' : 'text-gray-500'
+                                }`}
+                              >
+                                <Calendar className="w-3 h-3" />
+                                {isOverdue
+                                  ? `Overdue by ${formatDistanceToNow(
+                                      new Date(milestone.target_date)
+                                    )}`
+                                  : `Due ${format(
+                                      new Date(milestone.target_date),
+                                      'MMM d, yyyy'
+                                    )}`}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <MilestoneActions
+                          milestoneId={milestone.id}
+                          currentStatus={milestone.status}
+                          targetDate={milestone.target_date}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-center text-gray-500 py-8">
+              No milestones in progress. Start working on a milestone to see it here.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Not Started Milestones */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-gray-300" />
+            Not Started
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {notStartedMilestones && notStartedMilestones.length > 0 ? (
+            <div className="space-y-4">
+              {notStartedMilestones.map((milestone) => {
                 const isOverdue =
                   milestone.target_date && isPast(new Date(milestone.target_date));
 
@@ -216,7 +322,7 @@ export default async function MilestonesPage({ searchParams }: MilestonesPagePro
             <p className="text-center text-gray-500 py-8">
               {params.plan
                 ? 'No milestones for this plan yet.'
-                : 'No active milestones. Finalize a plan to create milestones.'}
+                : 'No milestones yet. Finalize a plan to create milestones.'}
             </p>
           )}
         </CardContent>

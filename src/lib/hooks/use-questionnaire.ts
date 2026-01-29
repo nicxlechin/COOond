@@ -53,6 +53,14 @@ export function useQuestionnaire(planId: string, planType: 'business_plan' | 'gt
     }));
   }, []);
 
+  // Import multiple answers at once (e.g., from another plan)
+  const importAnswers = useCallback((newAnswers: Partial<QuestionnaireResponses>) => {
+    setAnswers((prev) => ({
+      ...prev,
+      ...newAnswers,
+    }));
+  }, []);
+
   // Save progress to database
   const saveProgress = useCallback(async () => {
     setIsSaving(true);
@@ -128,6 +136,7 @@ export function useQuestionnaire(planId: string, planType: 'business_plan' | 'gt
     questionnaire,
     answers,
     updateAnswer,
+    importAnswers,
     saveProgress,
     validateStep,
     isSaving,

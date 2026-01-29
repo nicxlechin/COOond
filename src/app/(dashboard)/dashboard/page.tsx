@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { PlanJourney } from '@/components/plans/plan-journey';
 import {
   FileText,
   Rocket,
@@ -38,6 +39,39 @@ export default async function DashboardPage() {
     .eq('user_id', user.id)
     .order('updated_at', { ascending: false })
     .limit(3) as { data: Plan[] | null };
+
+  // Get most recent business plan and GTM plan for journey tracking
+  const { data: businessPlans } = await supabase
+    .from('plans')
+    .select('id, title, status')
+    .eq('user_id', user.id)
+    .eq('plan_type', 'business_plan')
+    .order('updated_at', { ascending: false })
+    .limit(1) as { data: Pick<Plan, 'id' | 'title' | 'status'>[] | null };
+
+  const { data: gtmPlans } = await supabase
+    .from('plans')
+    .select('id, title, status')
+    .eq('user_id', user.id)
+    .eq('plan_type', 'gtm_plan')
+    .order('updated_at', { ascending: false })
+    .limit(1) as { data: Pick<Plan, 'id' | 'title' | 'status'>[] | null };
+
+  const businessPlanStatus = businessPlans?.[0] ? {
+    type: 'business_plan' as const,
+    status: businessPlans[0].status === 'finalized' ? 'finalized' as const :
+            businessPlans[0].status === 'draft' || businessPlans[0].status === 'questionnaire_in_progress' ? 'in_progress' as const : 'not_started' as const,
+    planId: businessPlans[0].id,
+    title: businessPlans[0].title,
+  } : null;
+
+  const gtmPlanStatus = gtmPlans?.[0] ? {
+    type: 'gtm_plan' as const,
+    status: gtmPlans[0].status === 'finalized' ? 'finalized' as const :
+            gtmPlans[0].status === 'draft' || gtmPlans[0].status === 'questionnaire_in_progress' ? 'in_progress' as const : 'not_started' as const,
+    planId: gtmPlans[0].id,
+    title: gtmPlans[0].title,
+  } : null;
 
   // Get upcoming milestones
   const { data: milestones } = await supabase
@@ -74,6 +108,13 @@ export default async function DashboardPage() {
             : "Let's get started on your business journey"}
         </p>
       </div>
+
+      {/* Plan Journey */}
+      <PlanJourney
+        businessPlan={businessPlanStatus}
+        gtmPlan={gtmPlanStatus}
+        className="mb-8"
+      />
 
       {!hasPlans ? (
         /* First-time user view */
