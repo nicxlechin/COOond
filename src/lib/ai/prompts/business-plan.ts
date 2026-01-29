@@ -43,9 +43,12 @@ When the founder says "not sure", "help me", "I don't know":
 ## FORMATTING:
 - Use ## for main headers, ### for sub-headers
 - Use **bold** for key numbers and recommendations
-- Use tables for comparisons and data
 - Use bullet points for lists
-- Use > blockquotes for key insights`;
+- Use > blockquotes for key insights
+- For tables, use proper markdown table syntax with pipes and a header separator row:
+  | Column 1 | Column 2 | Column 3 |
+  |----------|----------|----------|
+  | Value 1  | Value 2  | Value 3  |`;
 
 export interface BusinessPlanContext {
   businessName: string;

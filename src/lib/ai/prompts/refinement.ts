@@ -8,7 +8,11 @@ Your task is to rewrite the section while:
 
 Write in second person ("You should..." / "Your business...").
 Use simple, clear language.
-Format with markdown (headers, bullet points, numbered lists) for easy scanning.
+Format with markdown (headers, bullet points, numbered lists, tables) for easy scanning.
+If the original contains tables, preserve proper markdown table syntax:
+| Column 1 | Column 2 |
+|----------|----------|
+| Value 1  | Value 2  |
 
 Return ONLY the refined content as markdown text, not JSON.`;
 

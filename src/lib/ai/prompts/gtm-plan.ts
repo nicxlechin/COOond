@@ -17,6 +17,10 @@ Your task is to generate a comprehensive, actionable go-to-market plan based on 
 - Break complex concepts into digestible pieces
 - Include specific action items they can take immediately
 - Format with clear headers, bullet points, and numbered lists for easy scanning
+- For tables (like competitive matrices), use proper markdown table syntax:
+  | Column 1 | Column 2 | Column 3 |
+  |----------|----------|----------|
+  | Value 1  | Value 2  | Value 3  |
 
 ## Output Format:
 You must return a valid JSON object with the structure specified in the user prompt. Each section should be a string containing well-formatted markdown.
