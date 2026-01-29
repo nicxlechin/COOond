@@ -135,9 +135,79 @@ export function PlanViewer({
   };
 
   const handleExportPDF = () => {
+    // Convert markdown tables to HTML
+    const convertTables = (md: string): string => {
+      const lines = md.split('\n');
+      const result: string[] = [];
+      let i = 0;
+
+      while (i < lines.length) {
+        const line = lines[i];
+
+        // Check if this line starts a table (starts and ends with |)
+        if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
+          const tableLines: string[] = [];
+
+          // Collect all consecutive table lines
+          while (i < lines.length && lines[i].trim().startsWith('|') && lines[i].trim().endsWith('|')) {
+            tableLines.push(lines[i]);
+            i++;
+          }
+
+          if (tableLines.length >= 2) {
+            // Parse the table
+            const headerRow = tableLines[0];
+            const separatorRow = tableLines[1];
+            const dataRows = tableLines.slice(2);
+
+            // Check if second row is a separator (contains only -, |, :, and spaces)
+            const isSeparator = /^[\s|:-]+$/.test(separatorRow);
+
+            if (isSeparator) {
+              // Parse header cells
+              const headerCells = headerRow.split('|').slice(1, -1).map(c => c.trim());
+
+              // Build HTML table
+              let tableHtml = '<table><thead><tr>';
+              headerCells.forEach(cell => {
+                tableHtml += `<th>${cell}</th>`;
+              });
+              tableHtml += '</tr></thead><tbody>';
+
+              // Parse data rows
+              dataRows.forEach(row => {
+                const cells = row.split('|').slice(1, -1).map(c => c.trim());
+                tableHtml += '<tr>';
+                cells.forEach(cell => {
+                  tableHtml += `<td>${cell}</td>`;
+                });
+                tableHtml += '</tr>';
+              });
+
+              tableHtml += '</tbody></table>';
+              result.push(tableHtml);
+            } else {
+              // Not a proper table, just add the lines back
+              tableLines.forEach(l => result.push(l));
+            }
+          } else {
+            tableLines.forEach(l => result.push(l));
+          }
+        } else {
+          result.push(line);
+          i++;
+        }
+      }
+
+      return result.join('\n');
+    };
+
     // Convert markdown to HTML for each section
     const convertMarkdown = (md: string) => {
-      return md
+      // First convert tables
+      let html = convertTables(md);
+
+      return html
         // Headers
         .replace(/^### (.*$)/gim, '<h3>$1</h3>')
         .replace(/^## (.*$)/gim, '<h2>$1</h2>')
@@ -149,13 +219,6 @@ export function PlanViewer({
         .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
         // Unordered lists
         .replace(/^- (.*$)/gim, '<li>$1</li>')
-        // Tables (basic support)
-        .replace(/\|(.+)\|/g, (match, content) => {
-          const cells = content.split('|').map((c: string) => c.trim());
-          const isHeader = cells.every((c: string) => c.match(/^-+$/));
-          if (isHeader) return '';
-          return '<tr>' + cells.map((c: string) => `<td>${c}</td>`).join('') + '</tr>';
-        })
         // Line breaks
         .replace(/\n\n/g, '</p><p>')
         .replace(/\n/g, '<br>');
