@@ -48,7 +48,15 @@ When the founder says "not sure", "help me", "I don't know":
 - For tables, use proper markdown table syntax with pipes and a header separator row:
   | Column 1 | Column 2 | Column 3 |
   |----------|----------|----------|
-  | Value 1  | Value 2  | Value 3  |`;
+  | Value 1  | Value 2  | Value 3  |
+
+## CRITICAL - NEWLINES IN JSON OUTPUT:
+- Include newlines using \\n escape sequence
+- Every bullet point on its own line (\\n before each "- ")
+- Every numbered item on its own line (\\n before each "1. ", "2. ", etc.)
+- Tables MUST have \\n between each row: "| Col1 | Col2 |\\n|------|------|\\n| Val1 | Val2 |"
+- Headers should have \\n\\n before them
+- Paragraphs separated by \\n\\n`;
 
 export interface BusinessPlanContext {
   businessName: string;

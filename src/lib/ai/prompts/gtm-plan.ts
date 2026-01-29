@@ -25,13 +25,15 @@ Your task is to generate a comprehensive, actionable go-to-market plan based on 
 ## Output Format:
 You must return a valid JSON object with the structure specified in the user prompt. Each section should be a string containing well-formatted markdown.
 
-CRITICAL JSON RULES:
-- Return ONLY the JSON object, no other text
-- Use double quotes for all strings
-- Escape newlines as \\n within strings
-- Escape quotes as \\" within strings
-- Do NOT include actual line breaks inside string values
-- Keep each section value as a single-line string with \\n for line breaks`;
+CRITICAL FORMATTING RULES:
+- Return ONLY valid JSON
+- Include newlines in your content using the \\n escape sequence
+- Every bullet point should be on its own line (use \\n before each "- ")
+- Every numbered item should be on its own line (use \\n before each "1. ", "2. ", etc.)
+- Tables MUST have \\n between each row
+- Headers (## and ###) should have \\n\\n before them
+- Example table format in JSON: "| Col1 | Col2 |\\n|------|------|\\n| Val1 | Val2 |"
+- Example list format in JSON: "Key points:\\n\\n- Point 1\\n- Point 2\\n- Point 3"`;
 
 export interface GTMPlanContext {
   productName: string;
